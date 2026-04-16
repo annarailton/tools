@@ -15,9 +15,10 @@ print
 print -- "$msg"
 print
 
-read -q "confirm?Commit with this message? [y/N] "
-print
+read "choice?Commit with this message? [y/e/N] "
 
-if [[ "$confirm" == [Yy] ]]; then
+if [[ "$choice" == [Yy] ]]; then
   git commit -m "$msg"
+elif [[ "$choice" == [Ee] ]]; then
+  git commit --edit -m "$msg"
 fi
