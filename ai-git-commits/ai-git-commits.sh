@@ -1,6 +1,5 @@
 #!/usr/bin/env zsh
-# This is a tiny script that suggests a git commit message using Codex
-# Suggests a commit based on staged changes only
+# This is a tiny script that suggests a git commit message using an LLM based on the staged changes.
 
 model="gpt-5.4-mini"
 diff_args=(--cached --unified=0)
