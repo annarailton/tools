@@ -4,6 +4,22 @@
 
 There is then the option to commit directly, edit it or just ditch the whole thing. 
 
+## Dependencies
+
+This script expects [`llm`](https://github.com/simonw/llm) to be installed and available on your `PATH`.
+
+Install it with:
+
+```bash
+brew install llm
+```
+
+You will also need to add an OpenAI API key with 
+
+```bash
+llm keys set openai
+```
+
 ## Usage
 
 Add this function to `~/.zshrc`:
