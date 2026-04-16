@@ -5,11 +5,18 @@ MODEL="gpt-5.4-mini"
 DIFF_ARGS=(--cached --unified=0)
 PROMPT="Propose a conventional commit message for these changes, one line preferred but not obligatory. Output only the message, nothing else"
 
-
 # Guard against empty staged changes
 if git diff --cached --quiet; then
 	print "No staged changes."
 	exit 0
+fi
+
+# Guard against missing llm command
+if ! command -v -- llm >/dev/null 2>&1; then
+	print -u2 "Error: \`llm\` is not installed or not on your PATH."
+	print -u2 "Install it with Homebrew: brew install llm"
+	print -u2 "Then configure your key: llm keys set openai"
+	exit 127
 fi
 
 # Deal with any options
