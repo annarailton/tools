@@ -8,10 +8,7 @@ if git diff --cached --quiet; then
 	exit 0
 fi
 
-tmp=$(mktemp)
-git diff --cached | codex exec -m gpt-5.4-mini -o "$tmp" "propose a conventional commit message for these changes, one line preferred but not obligatory. output only the message, nothing else." >/dev/null 2>/dev/null
-msg=$(<"$tmp")
-rm "$tmp"
+msg=$(git diff --cached | llm -m gpt-5.4-mini -s "Propose a conventional commit message for these changes, one line preferred but not obligatory. Output only the message, nothing else." 2>/dev/null)
 
 if [[ -z "$msg" ]]; then
 	print "No commit message was generated."
