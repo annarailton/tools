@@ -4,6 +4,7 @@
 MODEL="gpt-5.4-mini"
 DIFF_ARGS=(--cached --unified=0)
 PROMPT="Propose a conventional commit message for these changes, one line preferred but not obligatory. Output only the message, nothing else"
+COMMIT_ARGS=()
 
 # Guard against empty staged changes
 if git diff --cached --quiet; then
@@ -28,15 +29,19 @@ for arg in "$@"; do
 		MODEL="gpt-5.4"
 		DIFF_ARGS=(--cached) # Use the full diff for the high quality model
 		;;
+	-n | --no-verify)
+		COMMIT_ARGS+=(--no-verify)
+		;;
 	--help)
-		print "Usage: aicm.sh [-h|--high]"
+		print "Usage: aicm.sh [-h|--high] [-n|--no-verify]"
 		print
-		print "  -h, --high   Use gpt-5.4 and the full staged diff"
+		print "  -h, --high        Use gpt-5.4 and the full staged diff"
+		print "  -n, --no-verify   Run git commit with --no-verify"
 		exit 0
 		;;
 	*)
 		print "Unknown option: $arg" >&2
-		print "Usage: aicm.sh [-h|--high]" >&2
+		print "Usage: aicm.sh [-h|--high] [-n|--no-verify]" >&2
 		exit 1
 		;;
 	esac
@@ -60,8 +65,8 @@ read "choice?Commit with this message? [y]es / [e]dit / [N]o: "
 
 if [[ "$choice" == [Yy] ]]; then
 	print
-	git commit -m "$msg"
+	git commit "${COMMIT_ARGS[@]}" -m "$msg"
 elif [[ "$choice" == [Ee] ]]; then
 	print
-	git commit --edit -m "$msg"
+	git commit "${COMMIT_ARGS[@]}" --edit -m "$msg"
 fi
