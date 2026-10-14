@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# macOS
+.DS_Store
+
+# Snapshot build cache and captured photos
+/skills/snapshot/scripts/.build/
+/work/camera-snapshots/
