@@ -64,7 +64,8 @@ final class Capture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
     let control = DispatchQueue(label: "snapshot.session")
     let frames = DispatchQueue(label: "snapshot.frames")
-    var ready = false
+    var firstFrameAt: TimeInterval?
+    var exposureSettledAt: TimeInterval?
     var finished = false
     var timeout: DispatchWorkItem?
 
@@ -83,6 +84,11 @@ final class Capture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         control.async {
             do {
                 let input = try AVCaptureDeviceInput(device: selected)
+                if selected.isExposureModeSupported(.continuousAutoExposure) {
+                    try selected.lockForConfiguration()
+                    selected.exposureMode = .continuousAutoExposure
+                    selected.unlockForConfiguration()
+                }
                 self.session.beginConfiguration()
                 if self.session.canSetSessionPreset(.high) { self.session.sessionPreset = .high }
                 guard self.session.canAddInput(input) else { fail("Camera input unavailable") }
@@ -94,12 +100,14 @@ final class Capture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 guard self.session.canAddOutput(output) else { fail("Camera output unavailable") }
                 self.session.addOutput(output)
                 self.session.commitConfiguration()
-                self.session.startRunning()
                 let timeout = DispatchWorkItem {
                     self.finish(["error": "Camera frame timed out"], code: 1)
                 }
-                self.timeout = timeout
-                self.frames.asyncAfter(deadline: .now() + 5, execute: timeout)
+                self.frames.async {
+                    self.timeout = timeout
+                    self.frames.asyncAfter(deadline: .now() + 5, execute: timeout)
+                }
+                self.session.startRunning()
             } catch { fail(error.localizedDescription) }
         }
     }
@@ -107,10 +115,27 @@ final class Capture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sample: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
         guard !finished, let buffer = CMSampleBufferGetImageBuffer(sample) else { return }
-        if !ready {
-            ready = true
+        let now = ProcessInfo.processInfo.systemUptime
+        if firstFrameAt == nil {
+            firstFrameAt = now
+            timeout?.cancel()
+            let timeout = DispatchWorkItem {
+                self.finish(["error": "Camera stopped delivering frames while exposure settled"], code: 1)
+            }
+            self.timeout = timeout
+            frames.asyncAfter(deadline: .now() + 3, execute: timeout)
             report(["status": "ready", "camera": selected.localizedName])
         }
+        if selected.isAdjustingExposure {
+            exposureSettledAt = nil
+        } else if exposureSettledAt == nil {
+            exposureSettledAt = now
+        }
+        let elapsed = now - firstFrameAt!
+        // Discard startup frames, then require a short stable interval. Some webcams
+        // never report settled exposure, so save the current frame after two seconds.
+        let exposureSettled = elapsed >= 0.5 && exposureSettledAt.map { now - $0 >= 0.25 } == true
+        guard exposureSettled || elapsed >= 2 else { return }
         do {
             let image = CIImage(cvPixelBuffer: buffer)
             guard let data = CIContext().jpegRepresentation(of: image, colorSpace: CGColorSpaceCreateDeviceRGB(),
@@ -121,6 +146,7 @@ final class Capture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: url, options: .withoutOverwriting)
             finish(["status": "saved", "path": url.path, "camera": selected.localizedName,
+                    "exposure_settled": exposureSettled, "settling_seconds": elapsed,
                     "width": CVPixelBufferGetWidth(buffer), "height": CVPixelBufferGetHeight(buffer)], code: 0)
         } catch { finish(["error": error.localizedDescription], code: 1) }
     }

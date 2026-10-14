@@ -13,7 +13,7 @@ bash <absolute-skill-directory>/scripts/capture.sh --output <unique-absolute-pat
 
 Run the shell tool with `sandbox_permissions: "require_escalated"` on the first call, a PTY, and short yield. Camera discovery inside the sandbox can return no devices even when cameras are connected; do not treat that as proof no camera exists. Never bypass rejected approval.
 
-The helper prefers the built-in Mac camera when the lid is open and skips it when the lid is closed, using an external webcam instead. It captures the first available frame without a countdown. No preliminary camera listing, stdin command, or extra sleep is needed. With automatic selection, if the built-in camera times out after five seconds without a frame, use `--list` with the same camera access and retry once with the sole external webcam. Honor a named camera with `--camera "<name or ID>"`; use `--list` only if selection fails.
+Honor a named camera with `--camera "<name or ID>"`. If automatic selection fails, use `--list` with the same camera access and retry once with the sole external webcam; ask if selection is ambiguous.
 
 Save under the workspace's `work/camera-snapshots/` with a timestamp plus UUID. Cancel with Ctrl-C if requested. Allow macOS permission prompts; report failures.
 
